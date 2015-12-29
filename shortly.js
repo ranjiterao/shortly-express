@@ -25,7 +25,11 @@ app.use(express.static(__dirname + '/public'));
 
 app.get('/', 
 function(req, res) {
-  res.render('index');
+  // res.render('index');
+  // Previously, anyone could see the complete list of
+  // shortened links. We don't want that! So, send them
+  // to login.
+  res.render('login');
 });
 
 app.get('/create', 
@@ -75,6 +79,26 @@ function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+
+app.post('/login',
+  function(req, res) {
+    var username = req.body.username;
+    var password = req.body.password;
+
+    if (true) {
+      req.session.regenerate(function() {
+        req.session.user = username;
+        res.redirect('/create');
+      });
+    } else {
+      res.redirect('/login');
+    }
+});
+
+app.get('/signup',
+  function(req, res) {
+    res.render('signup');
+});
 
 
 
