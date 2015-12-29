@@ -2,6 +2,8 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
+var bcrypt = require('bcrypt-nodejs');
+var session = require('express-session');
 
 
 var db = require('./app/config');
@@ -22,6 +24,12 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
+app.use(session({
+  genid: function(req) {
+    return Math.floor(Math.random()*1000000000);
+  },
+  secret: 'hackreactor'
+}));
 
 app.get('/', 
 function(req, res) {
@@ -97,14 +105,39 @@ app.post('/signup', function(req, res) {
     return res.send(404);
   }
 
-  // new User({pass: password}).fetch().then(function(found) {
-  Users.create({
-    username: username,
-    hash: password
-  })
-  .then(function() {
-    res.redirect('/login');
+  bcrypt.hash(password, null, null, function(err, hash) {
+    Users.create({
+      username: username,
+      hash: hash
+    }).then(function() {
+      res.redirect('/login');
+    });
   });
+
+  // (function() {
+  //   return new Promise(function(resolve, reject) {
+  //     resolve(new User({
+  //       username: username,
+  //       hash: password
+  //     }));
+  //   });
+  // })()
+  // .then(function(model) {
+  //   model.save();
+  // }).then(function(model) {
+  //   Users.add(model);
+  // }).then(function() {
+  //   res.redirect('/login');
+  // });
+
+  // new User({pass: password}).fetch().then(function(found) {
+  // Users.create({
+  //   username: username,
+  //   hash: password
+  // })
+  // .then(function() {
+  //   res.redirect('/login');
+  // });
   // });
 });
 
@@ -113,16 +146,31 @@ app.post('/login',
     var username = req.body.username;
     var password = req.body.password;
 
-    // set to true just so the server can work. this should
-    // be call to authorization check.
-    if (true) {
-      req.session.regenerate(function() {
-        req.session.user = username;
-        res.redirect('/create');
-      });
-    } else {
-      res.redirect('/login');
-    }
+    new User({username: username})
+    .fetch().then(function(found) {
+      if(found) {
+        bcrypt.compare(password, found.attributes.hash, function(err, result) {
+          if (err) {
+            // ...some kind of database/connection error?
+            console.log('Login failed!');
+          } else if (result) {
+            req.session.regenerate(function() {
+              req.session.user = username;
+              res.redirect('/create');
+            });
+          } else {
+            // wrong password
+            console.log('Invalid combination of username and password!');
+            res.redirect('/login');
+          }
+        });
+      }
+      else {
+        // no such username
+        console.log('Invalid combination of username and password!');
+        res.redirect('/login');
+      }
+    });
 });
 
 /************************************************************/

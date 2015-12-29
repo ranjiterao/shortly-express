@@ -6,12 +6,11 @@ var User = db.Model.extend({
   tableName: 'users',
   hasTimestamps: true,
   initialize: function() {
-    this.on('creating', function(model, attrs, options) {
-      // MAGIC HAPPENS HERE WITH THE PASSWORD
-      var hashThis = model.get('hash');
-      // realHash = run bcrypt on hashThis
-      model.set('hash', realHash);
-    });
+    // this.on('creating', function(model, attrs, options) {
+    //   bcrypt.hash(model.get('hash'), null, null, function(err, hash) {
+    //     model.set('hash', hash);
+    //   });
+    // });
   }
 });
 
