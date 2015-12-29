@@ -97,14 +97,15 @@ app.post('/signup', function(req, res) {
     return res.send(404);
   }
 
-  new User({pass: password}).fetch().then(function(found) {
-    Users.create({
-      username: username,
-    })
-    .then(function() {
-      res.redirect('/login');
-    });
+  // new User({pass: password}).fetch().then(function(found) {
+  Users.create({
+    username: username,
+    hash: password
+  })
+  .then(function() {
+    res.redirect('/login');
   });
+  // });
 });
 
 app.post('/login',

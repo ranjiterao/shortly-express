@@ -50,7 +50,7 @@ db.knex.schema.hasTable('users').then(function(exists) {
     db.knex.schema.createTable('users', function (link) {
       link.increments('id').primary();
       link.string('username', 255);
-      link.string('passOrHash', 255);
+      link.string('hash', 255);
       link.timestamps();
     }).then(function (table) {
       console.log('Created Table', table);
@@ -58,17 +58,17 @@ db.knex.schema.hasTable('users').then(function(exists) {
   }
 });
 
-db.knex.schema.hasTable('link_user').then(function(exists) {
-  if (!exists) {
-    db.knex.schema.createTable('link_user', function (link) {
-      link.increments('id').primary();
-      link.integer('link_id');
-      link.integer('user_id');
-      link.timestamps();
-    }).then(function (table) {
-      console.log('Created Table', table);
-    });
-  }
-});
+// db.knex.schema.hasTable('link_user').then(function(exists) {
+//   if (!exists) {
+//     db.knex.schema.createTable('link_user', function (link) {
+//       link.increments('id').primary();
+//       link.integer('link_id');
+//       link.integer('user_id');
+//       link.timestamps();
+//     }).then(function (table) {
+//       console.log('Created Table', table);
+//     });
+//   }
+// });
 
 module.exports = db;
