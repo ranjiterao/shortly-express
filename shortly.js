@@ -30,6 +30,8 @@ function(req, res) {
   // shortened links. We don't want that! So, send them
   // to login.
   res.render('login');
+
+  // when logged in, should redirect to create page
 });
 
 app.get('/create', 
@@ -80,11 +82,38 @@ function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 
+app.get('/signup',
+  function(req, res) {
+    res.render('signup');
+});
+
+app.post('/signup', function(req, res) {
+  var username = req.body.username;
+  var password = req.body.password;
+
+  // false should actually be a check to see if username is already in database
+  if(false) {
+    console.log('The username you chose has already been taken!');
+    return res.send(404);
+  }
+
+  new User({pass: password}).fetch().then(function(found) {
+    Users.create({
+      username: username,
+    })
+    .then(function() {
+      res.redirect('/login');
+    });
+  });
+});
+
 app.post('/login',
   function(req, res) {
     var username = req.body.username;
     var password = req.body.password;
 
+    // set to true just so the server can work. this should
+    // be call to authorization check.
     if (true) {
       req.session.regenerate(function() {
         req.session.user = username;
@@ -94,13 +123,6 @@ app.post('/login',
       res.redirect('/login');
     }
 });
-
-app.get('/signup',
-  function(req, res) {
-    res.render('signup');
-});
-
-
 
 /************************************************************/
 // Handle the wildcard route last - if all other routes fail
