@@ -25,36 +25,50 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(__dirname + '/public'));
 
 app.use(session({
-  genid: function(req) {
-    return Math.floor(Math.random()*1000000000);
-  },
   secret: 'hackreactor'
 }));
 
-app.get('/', 
-function(req, res) {
-  // res.render('index');
-  // Previously, anyone could see the complete list of
-  // shortened links. We don't want that! So, send them
-  // to login.
-  res.render('login');
+var authCheck = function(req, res, next) {
+  if (req.session.user) {
+    next();
+  } else {
+    req.session.error = 'Keep out!';
+    res.redirect('/login');
+  }
+};
 
-  // when logged in, should redirect to create page
-});
-
-app.get('/create', 
+app.get('/', authCheck,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/links', 
+app.get('/create', authCheck,
+function(req, res) {
+  console.log('went to create')
+  res.render('index');
+});
+
+app.get('/links', authCheck,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
-app.post('/links', 
+app.get('/login',
+function(req, res) {
+  res.render('login');
+});
+
+app.get('/logout',
+function(req, res) {
+  console.log('loggedout!');
+  req.session.destroy(function() {
+    res.render('login');
+  });
+});
+
+app.post('/links', authCheck,
 function(req, res) {
   var uri = req.body.url;
 
@@ -110,7 +124,10 @@ app.post('/signup', function(req, res) {
       username: username,
       hash: hash
     }).then(function() {
-      res.redirect('/login');
+      req.session.regenerate(function() {
+        req.session.user = username;
+        res.redirect('/');
+      });
     });
   });
 
@@ -154,10 +171,8 @@ app.post('/login',
             // ...some kind of database/connection error?
             console.log('Login failed!');
           } else if (result) {
-            req.session.regenerate(function() {
-              req.session.user = username;
-              res.redirect('/create');
-            });
+            req.session.user = username;
+            res.redirect('/create');
           } else {
             // wrong password
             console.log('Invalid combination of username and password!');
@@ -179,24 +194,24 @@ app.post('/login',
 // If the short-code doesn't exist, send the user to '/'
 /************************************************************/
 
-app.get('/*', function(req, res) {
-  new Link({ code: req.params[0] }).fetch().then(function(link) {
-    if (!link) {
-      res.redirect('/');
-    } else {
-      var click = new Click({
-        link_id: link.get('id')
-      });
+// app.get('/*', function(req, res) {
+//   new Link({ code: req.params[0] }).fetch().then(function(link) {
+//     if (!link) {
+//       res.redirect('/');
+//     } else {
+//       var click = new Click({
+//         link_id: link.get('id')
+//       });
 
-      click.save().then(function() {
-        link.set('visits', link.get('visits')+1);
-        link.save().then(function() {
-          return res.redirect(link.get('url'));
-        });
-      });
-    }
-  });
-});
+//       click.save().then(function() {
+//         link.set('visits', link.get('visits')+1);
+//         link.save().then(function() {
+//           return res.redirect(link.get('url'));
+//         });
+//       });
+//     }
+//   });
+// });
 
 console.log('Shortly is listening on 4568');
 app.listen(4568);
