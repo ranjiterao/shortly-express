@@ -132,7 +132,6 @@ app.post('/login',
 
     new User({username: username})
     .fetch().then(function(found) {
-      console.log(found);
       if(found) {
         util.comparePassword(password, found.attributes.hash, function(err, match) {
           if (err) {
