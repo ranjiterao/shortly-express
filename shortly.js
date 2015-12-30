@@ -2,7 +2,6 @@ var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
 var bodyParser = require('body-parser');
-var bcrypt = require('bcrypt-nodejs');
 var session = require('express-session');
 
 
@@ -28,27 +27,17 @@ app.use(session({
   secret: 'hackreactor'
 }));
 
-var authCheck = function(req, res, next) {
-  if (req.session.user) {
-    next();
-  } else {
-    req.session.error = 'Keep out!';
-    res.redirect('/login');
-  }
-};
-
-app.get('/', authCheck,
+app.get('/', util.authCheck,
 function(req, res) {
   res.render('index');
 });
 
-app.get('/create', authCheck,
+app.get('/create', util.authCheck,
 function(req, res) {
-  console.log('went to create')
   res.render('index');
 });
 
-app.get('/links', authCheck,
+app.get('/links', util.authCheck,
 function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
@@ -62,15 +51,18 @@ function(req, res) {
 
 app.get('/logout',
 function(req, res) {
-  console.log('loggedout!');
   req.session.destroy(function() {
-    res.render('login');
+    res.redirect('/login');
   });
 });
 
-app.post('/links', authCheck,
+app.post('/links', util.authCheck,
 function(req, res) {
   var uri = req.body.url;
+
+  if (uri.indexOf('www.') === 0) {
+    uri = 'http://' + uri;
+  }
 
   if (!util.isValidUrl(uri)) {
     console.log('Not a valid url: ', uri);
@@ -113,49 +105,24 @@ app.post('/signup', function(req, res) {
   var username = req.body.username;
   var password = req.body.password;
 
-  // false should actually be a check to see if username is already in database
-  if(false) {
-    console.log('The username you chose has already been taken!');
-    return res.send(404);
-  }
-
-  bcrypt.hash(password, null, null, function(err, hash) {
-    Users.create({
-      username: username,
-      hash: hash
-    }).then(function() {
-      req.session.regenerate(function() {
-        req.session.user = username;
-        res.redirect('/');
-      });
-    });
+  new User({username: username}).fetch().then(function(found) {
+    if (found) {
+      console.log('Username already taken, please choose another');
+      res.redirect('/signup');
+    } else {
+      util.hashPassword(password, function(hash) {
+        Users.create({
+          username: username,
+          hash: hash
+        }).then(function() {
+          req.session.regenerate(function() {
+            req.session.user = username;
+            res.redirect('/');
+          });
+        });
+      });  
+    }
   });
-
-  // (function() {
-  //   return new Promise(function(resolve, reject) {
-  //     resolve(new User({
-  //       username: username,
-  //       hash: password
-  //     }));
-  //   });
-  // })()
-  // .then(function(model) {
-  //   model.save();
-  // }).then(function(model) {
-  //   Users.add(model);
-  // }).then(function() {
-  //   res.redirect('/login');
-  // });
-
-  // new User({pass: password}).fetch().then(function(found) {
-  // Users.create({
-  //   username: username,
-  //   hash: password
-  // })
-  // .then(function() {
-  //   res.redirect('/login');
-  // });
-  // });
 });
 
 app.post('/login',
@@ -165,14 +132,15 @@ app.post('/login',
 
     new User({username: username})
     .fetch().then(function(found) {
+      console.log(found);
       if(found) {
-        bcrypt.compare(password, found.attributes.hash, function(err, result) {
+        util.comparePassword(password, found.attributes.hash, function(err, match) {
           if (err) {
             // ...some kind of database/connection error?
             console.log('Login failed!');
-          } else if (result) {
+          } else if (match) {
             req.session.user = username;
-            res.redirect('/create');
+            res.redirect('/');
           } else {
             // wrong password
             console.log('Invalid combination of username and password!');
@@ -194,24 +162,24 @@ app.post('/login',
 // If the short-code doesn't exist, send the user to '/'
 /************************************************************/
 
-// app.get('/*', function(req, res) {
-//   new Link({ code: req.params[0] }).fetch().then(function(link) {
-//     if (!link) {
-//       res.redirect('/');
-//     } else {
-//       var click = new Click({
-//         link_id: link.get('id')
-//       });
+app.get('/*', function(req, res) {
+  new Link({ code: req.params[0] }).fetch().then(function(link) {
+    if (!link) {
+      res.redirect('/');
+    } else {
+      var click = new Click({
+        link_id: link.get('id')
+      });
 
-//       click.save().then(function() {
-//         link.set('visits', link.get('visits')+1);
-//         link.save().then(function() {
-//           return res.redirect(link.get('url'));
-//         });
-//       });
-//     }
-//   });
-// });
+      click.save().then(function() {
+        link.set('visits', link.get('visits')+1);
+        link.save().then(function() {
+          return res.redirect(link.get('url'));
+        });
+      });
+    }
+  });
+});
 
 console.log('Shortly is listening on 4568');
 app.listen(4568);
