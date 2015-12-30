@@ -138,8 +138,10 @@ app.post('/login',
             // ...some kind of database/connection error?
             console.log('Login failed!');
           } else if (match) {
-            req.session.user = username;
-            res.redirect('/');
+            req.session.regenerate(function() {
+              req.session.user = username;
+              res.redirect('/');
+            });
           } else {
             // wrong password
             console.log('Invalid combination of username and password!');
